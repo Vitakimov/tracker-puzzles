@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тренажёр трекера — бизнес-пазлы</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #f7f6f3;
+    --surface:   #ffffff;
+    --border:    #e4e1d9;
+    --border-md: #ccc9c0;
+    --text-1:    #1a1915;
+    --text-2:    #5c5a53;
+    --text-3:    #9b9890;
+    --accent:    #2d6a4f;
+    --accent-bg: #eaf3ee;
+    --warn:      #92400e;
+    --warn-bg:   #fef3c7;
+    --danger:    #991b1b;
+    --danger-bg: #fef2f2;
+    --success:   #14532d;
+    --success-bg:#f0fdf4;
+    --success-br:#bbf7d0;
+    --fail-br:   #fecaca;
+    --new:       #1e3a5f;
+    --new-bg:    #eff6ff;
+    --new-br:    #bfdbfe;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    font-family: 'Onest', sans-serif;
+    color: var(--text-1);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  #app {
+    max-width: 660px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .brand {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-1);
+    letter-spacing: -0.01em;
+  }
+  .brand span { color: var(--accent); }
+
+  /* ── Filter chips ── */
+  .chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+  .chip {
+    font-size: 12px;
+    font-family: inherit;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .chip:hover { border-color: var(--border-md); color: var(--text-1); }
+  .chip.active {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .chip.new-chip { border-color: var(--new-br); color: var(--new); }
+  .chip.new-chip.active { background: var(--new-bg); }
+
+  /* ── Stats ── */
+  .stats {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+  }
+  .stat {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-2);
+    text-align: center;
+  }
+  .stat b { color: var(--text-1); font-weight: 600; }
+
+  /* ── Progress ── */
+  .progress-wrap {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: .75rem;
+    transition: border-color .2s;
+  }
+  .card.is-new { border-color: var(--new-br); }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .tag-theme { background: var(--warn-bg); color: var(--warn); }
+  .tag-easy  { background: var(--success-bg); color: var(--success); }
+  .tag-mid   { background: var(--warn-bg); color: var(--warn); }
+  .tag-hard  { background: var(--danger-bg); color: var(--danger); }
+  .tag-new   { background: var(--new-bg); color: var(--new); }
+  .counter   { font-size: 12px; color: var(--text-3); margin-left: auto; }
+
+  .case-title {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+  }
+  .case-body {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.7;
+  }
+  .hl {
+    background: var(--warn-bg);
+    color: var(--warn);
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-weight: 500;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin: 1.25rem 0 8px;
+  }
+
+  /* ── Options ── */
+  .opt {
+    width: 100%;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-1);
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: all .15s;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.5;
+  }
+  .opt:hover:not(:disabled) {
+    border-color: var(--border-md);
+    background: var(--bg);
+  }
+  .opt.correct {
+    border-color: var(--success-br) !important;
+    background: var(--success-bg) !important;
+    color: var(--success) !important;
+  }
+  .opt.wrong {
+    border-color: var(--fail-br) !important;
+    background: var(--danger-bg) !important;
+    color: var(--danger) !important;
+  }
+  .opt-l { font-weight: 600; min-width: 20px; flex-shrink: 0; }
+
+  /* ── Result ── */
+  .result {
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.25rem;
+    font-size: 14px;
+    line-height: 1.7;
+    display: none;
+    margin-top: .75rem;
+  }
+  .result.show { display: block; }
+  .result.ok {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid var(--success-br);
+  }
+  .result.fail {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--fail-br);
+  }
+  .result-title { font-weight: 600; margin-bottom: 5px; }
+
+  /* ── Hint ── */
+  .hint-box {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-2);
+    border-left: 3px solid var(--border-md);
+    margin-top: 10px;
+    display: none;
+    line-height: 1.6;
+  }
+  .hint-box.show { display: block; }
+
+  /* ── Bottom bar ── */
+  .bottombar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: .75rem;
+  }
+  .hint-btn {
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-3);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color .15s;
+  }
+  .hint-btn:hover { color: var(--text-2); }
+  .next-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-md);
+    border-radius: var(--radius-sm);
+    padding: 9px 18px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-1);
+    display: none;
+    align-items: center;
+    gap: 6px;
+    transition: all .15s;
+  }
+  .next-btn.show { display: flex; }
+  .next-btn:hover { background: var(--bg); border-color: var(--text-3); }
+
+  /* ── Empty ── */
+  .empty {
+    text-align: center;
+    padding: 3rem;
+    font-size: 14px;
+    color: var(--text-3);
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 1rem .75rem; }
+    .card { padding: 1.25rem; }
+    .stats .stat { padding: 8px 6px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="brand">1212 · <span>Тренажёр трекера</span></div>
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip active" onclick="setFilter('all',this)">Все (12)</button>
+    <button class="chip" onclick="setFilter('Диагностика',this)">Диагностика</button>
+    <button class="chip" onclick="setFilter('Сессия',this)">Сессия</button>
+    <button class="chip" onclick="setFilter('Портфель',this)">Портфель</button>
+    <button class="chip" onclick="setFilter('Масштабирование',this)">Масштабирование</button>
+    <button class="chip" onclick="setFilter('Стратегия',this)">Стратегия</button>
+    <button class="chip new-chip" onclick="setFilter('new',this)">✦ Новые (6)</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat">🔥 Серия: <b id="s-streak">0</b></div>
+    <div class="stat">✓ Верно: <b id="s-right">0</b></div>
+    <div class="stat">✗ Мимо: <b id="s-wrong">0</b></div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-fill" id="progress" style="width:0%"></div>
+  </div>
+
+  <div id="puzzle-area"></div>
+</div>
+
+<script>
+const RAW = [
+  /* ─── Блок 1: базовые трекерские кейсы (6) ─── */
+  {
+    theme:"Диагностика", diff:"Лёгкий", isNew:false,
+    title:"Фаундер говорит «всё хорошо», но выглядит иначе",
+    body:"Первая сессия. Глеб (B2B SaaS, 8 мес.) бодро отчитывается: MRR +12%, команда 5 человек, <span class='hl'>«проблем нет, просто хочу структурировать мышление»</span>. Говорит быстро, перебивает себя, не смотрит в глаза.",
+    hint:"Расхождение между словами и телом — это данные. Что за ними?",
+    correct:"Мягко назвать наблюдение: «Ты говоришь, что проблем нет — и одновременно выглядишь напряжённо. Что реально происходит?»",
+    wrong:[
+      "Принять запрос буквально и помочь выстроить приоритеты и систему планирования",
+      "Задать серию диагностических вопросов по юнит-экономике и бизнес-модели",
+      "Попросить подготовить детальный отчёт к следующей встрече",
+    ],
+    explanation:"Инструментальные вопросы про метрики сейчас закроют контакт. Трекер называет наблюдение прямо и без оценки — это создаёт безопасность и открывает реальный запрос."
+  },
+  {
+    theme:"Сессия", diff:"Средний", isNew:false,
+    title:"Фаундер тянет решение уже 3 сессии подряд",
+    body:"Андрей третью сессию подряд приходит с одним вопросом: <span class='hl'>«Нанять CTO или сначала поднять раунд?»</span> Каждый раз находит новые причины не решать. MRR $45K, runway 7 месяцев. Все инструменты для анализа уже даны.",
+    hint:"Затяжное не-решение — это тоже решение. Что делает Андрей, пока «думает»?",
+    correct:"Назвать паттерн: «Ты не принимаешь это решение уже 3 сессии. Что происходит на самом деле?»",
+    wrong:[
+      "Ещё раз разобрать плюсы и минусы обоих вариантов — может, не хватает данных",
+      "Дать прямую рекомендацию: сначала раунд, потом CTO",
+      "Предложить подключить внешнего эксперта по найму CTO",
+    ],
+    explanation:"Паттерн «вечный вопрос» — не дефицит информации, а страх или скрытый конфликт. Runway 7 мес добавляет срочность. Задача трекера — назвать паттерн, а не давать новые инструменты."
+  },
+  {
+    theme:"Диагностика", diff:"Средний", isNew:false,
+    title:"Рост MRR, но команда разваливается",
+    body:"MRR +20% последние 3 месяца. За тот же период <span class='hl'>ушли 2 из 6 инженеров</span>, NPS команды упал с 45 до 18. Фаундер считает это «издержками роста» и просит помочь ускорить найм замены.",
+    hint:"Что произойдёт с ростом MRR, если ещё 2 инженера уйдут?",
+    correct:"Оспорить фрейм: «Если ещё 2 инженера уйдут — что станет с ростом MRR?» — и докопаться до причины оттока",
+    wrong:[
+      "Помочь выстроить систему найма — рост требует людей",
+      "Предложить поднять зарплаты, чтобы удержать оставшихся",
+      "Провести 1:1 с каждым инженером и собрать обратную связь",
+    ],
+    explanation:"«Издержки роста» — ловушка. NPS команды 18 при росте MRR значит: рост куплен за счёт людей. Трекер сначала оспаривает нарратив, потом идёт в причины. Найм без понимания причин оттока — деньги на ветер."
+  },
+  {
+    theme:"Сессия", diff:"Лёгкий", isNew:false,
+    title:"Клиент хочет от трекера готовых ответов",
+    body:"Михаил (e-commerce, $200K MRR) на второй сессии говорит прямо: <span class='hl'>«Давай ты просто скажешь что делать — мне некогда на сессии, нужен результат»</span>. Ты чувствуешь давление дать совет.",
+    hint:"Если ты даёшь ответ — кто несёт ответственность за результат?",
+    correct:"Назвать механику: «Я могу дать совет, но тогда это мой бизнес, не твой. Моя задача — чтобы ты сам видел правильный ход»",
+    wrong:[
+      "Дать конкретный совет — клиент платит за результат, и у тебя есть экспертиза",
+      "Предложить сократить сессии до 30 минут для экономии времени",
+      "Поставить ультиматум: «Или работаем по методологии, или расстаёмся»",
+    ],
+    explanation:"«Скажи что делать» — ловушка зависимости. Если трекер даёт ответ, фаундер теряет ownership. Хороший трекер называет механику прямо и без осуждения, затем возвращает фаундера к его собственному мышлению."
+  },
+  {
+    theme:"Портфель", diff:"Сложный", isNew:false,
+    title:"Два клиента в портфеле конфликтуют",
+    body:"Ты работаешь с двумя стартапами: A (CRM для отелей) и B (автоматизация продаж для отелей). <span class='hl'>Основатель B узнал о клиенте A и требует объяснений.</span> Формально NDA с обоими подписаны, прямых конкурентов в договоре не прописано.",
+    hint:"Юридически ты чист. Этически?",
+    correct:"Признать напряжение, раскрыть факт работы с A (без деталей) и предложить B выбор: продолжать или нет",
+    wrong:[
+      "Объяснить, что формально конфликта нет — разные ниши, разные данные",
+      "Прекратить работу с A — B первым выразил претензию",
+      "Сохранить оба контракта, не раскрывая деталей ни одному",
+    ],
+    explanation:"Юридическая чистота ≠ этическая. Доверие — главный актив трекера. Прозрачность + выбор за клиентом может стоить одного контракта, но сохраняет репутацию."
+  },
+  {
+    theme:"Портфель", diff:"Средний", isNew:false,
+    title:"Фаундер не делает домашние задания — 4 сессии подряд",
+    body:"Лена (EdTech, pre-revenue) четвёртую сессию подряд приходит без выполненных договорённостей: <span class='hl'>не провела кастдевы, не сделала финмодель, не поговорила с инвестором.</span> Каждый раз — новое объяснение.",
+    hint:"Паттерн важнее объяснения. Что стоит за систематическим невыполнением?",
+    correct:"Назвать паттерн напрямую: «Мы договариваемся — и ничего не происходит уже 4 раза. Что происходит между сессиями?»",
+    wrong:[
+      "Упростить задания — может быть, они слишком большие",
+      "Предупредить о прекращении трекинга, если ситуация повторится",
+      "Перейти на более частые встречи для контроля выполнения",
+    ],
+    explanation:"Систематическое невыполнение с новыми объяснениями — не про задачи, а про мотивацию или страх. Упрощение и угрозы не вскрывают причину. Трекер называет паттерн прямо, без оценки."
+  },
+
+  /* ─── Блок 2: новые кейсы (6) ─── */
+  {
+    theme:"Масштабирование", diff:"Средний", isNew:true,
+    title:"Фаундер хочет нанять 10 человек за квартал",
+    body:"Денис закрыл раунд $1.5M. План: <span class='hl'>нанять 10 человек за квартал — продажи, маркетинг, поддержка.</span> Сейчас команда 4 человека, процессов нет, продукт ещё в итерации. Runway после найма — 11 месяцев.",
+    hint:"Что происходит с культурой и качеством, когда команда вырастает в 3.5 раза быстрее, чем появляются процессы?",
+    correct:"Задать вопрос-разворот: «Какие процессы сломаются первыми, когда придут 10 новых людей?» — и начать с инфраструктуры",
+    wrong:[
+      "Помочь составить org chart и JD для 10 позиций — деньги есть, время нанимать",
+      "Сократить план до 5 человек как разумный компромисс",
+      "Порекомендовать нанять сначала Head of People для выстраивания найма",
+    ],
+    explanation:"Быстрый найм без процессов — один из главных разрушителей стартапов после раунда. Команда x3.5 без онбординга создаёт хаос быстрее, чем новые люди начнут давать результат. Трекер переключает фокус с «кого нанять» на «к чему нанимать»."
+  },
+  {
+    theme:"Конфликт", diff:"Сложный", isNew:true,
+    title:"Два фаундера не могут договориться — и оба правы",
+    body:"Co-founders Игорь (CEO) и Саша (CTO) пришли на сессию вместе. Игорь: <span class='hl'>«Нужно запускать фичи быстрее»</span>. Саша: <span class='hl'>«Технический долг убьёт нас через 6 месяцев»</span>. Оба смотрят на тебя — рассуди.",
+    hint:"Они ждут, что ты выберешь сторону. Что произойдёт с их отношениями, если ты это сделаешь?",
+    correct:"Отказаться выбирать сторону: «Вы оба правы — и именно поэтому вам нужно договориться самим. Как вы принимаете решения, когда приоритеты расходятся?»",
+    wrong:[
+      "Поддержать Игоря — скорость важнее в конкурентной среде",
+      "Поддержать Сашу — технический долг реален и игнорировать его опасно",
+      "Предложить внешний технический аудит для объективной оценки ситуации",
+    ],
+    explanation:"Выбрать сторону — значит стать частью конфликта и обесценить одного из фаундеров. Реальная проблема — не техдолг vs фичи, а отсутствие механизма принятия решений между co-founders. Трекер переводит фокус на процесс, а не на правоту."
+  },
+  {
+    theme:"Стратегия", diff:"Сложный", isNew:true,
+    title:"Фаундер хочет сменить бизнес-модель после первых продаж",
+    body:"Катя (HR-tech, 8 мес.) сделала первые 3 продажи B2B по $500/мес. Теперь говорит: <span class='hl'>«Хочу перейти на freemium — так быстрее наберём базу»</span>. Причина: конкурент запустил бесплатный план и получил шум в медиа.",
+    hint:"Смена модели сейчас — это реакция на данные или на страх?",
+    correct:"Вскрыть мотив: «Ты меняешь модель потому что freemium лучше подходит твоим клиентам — или потому что испугалась конкурента?»",
+    wrong:[
+      "Поддержать идею — PLG работает в HR-tech и конкурент не зря так делает",
+      "Остановить смену модели — 3 продажи ещё не валидация, нужно больше данных",
+      "Предложить запустить freemium параллельно как ограниченный эксперимент",
+    ],
+    explanation:"3 B2B-продажи — первый сигнал, что модель работает. Смена под влиянием медиашума конкурента — реакция на страх, а не на данные. Freemium и B2B требуют разных команд, CAC и unit-экономики. Трекер вскрывает мотив до того, как обсуждать решение."
+  },
+  {
+    theme:"Диагностика", diff:"Средний", isNew:true,
+    title:"Фаундер называет симптом, но не проблему",
+    body:"Роман (Fintech, 14 мес.) просит сессию по теме: <span class='hl'>«Помоги выстроить воронку продаж»</span>. В разговоре выясняется: 12 лидов в месяц, конверсия в демо 80%, конверсия в оплату — 8%. Команда продаж — 1 человек.",
+    hint:"Где именно в воронке теряются деньги? Что это говорит о реальной проблеме?",
+    correct:"Переформулировать задачу: «У тебя отличная конверсия в демо — значит, проблема не в воронке, а в том, что происходит после демо. Почему не покупают?»",
+    wrong:[
+      "Помочь выстроить воронку: добавить этапы, CRM, скрипты для лидогенерации",
+      "Предложить нанять второго сейлза для увеличения объёма",
+      "Провести аудит ICP — возможно, приходят нецелевые лиды",
+    ],
+    explanation:"Запрос «воронка продаж» — симптом, а не проблема. Конверсия в демо 80% означает лиды целевые. Потеря на этапе оплаты указывает на проблему ценностного предложения, прайсинга или работы с возражениями — не структуру воронки. Трекер переформулирует задачу прежде, чем давать инструменты."
+  },
+  {
+    theme:"Сессия", diff:"Сложный", isNew:true,
+    title:"Клиент обесценивает работу трекера публично",
+    body:"Артём (CEO, $1.2M ARR) после 4 месяцев трекинга на встрече с командой говорит: <span class='hl'>«Трекер помогает, но всё это и так было понятно — просто структурировали»</span>. Тебя не предупредил. Ты слышишь это вживую.",
+    hint:"Что важнее сейчас — защитить свою позицию или понять, что стоит за этой фразой?",
+    correct:"После встречи в приватном разговоре: «Я заметил твой комментарий. Хочу понять честно — ты видишь ценность в нашей работе или мы что-то делаем не так?»",
+    wrong:[
+      "Сразу возразить публично — привести конкретные результаты, которых достигли вместе",
+      "Промолчать и продолжить работу как будто ничего не произошло",
+      "Написать письмо с детализацией всего, что было сделано за 4 месяца",
+    ],
+    explanation:"Публичное возражение создаёт конфронтацию и ставит клиента в защитную позицию. Молчание — накапливает напряжение. Правильный ход: приватный честный разговор, где трекер называет наблюдение и задаёт прямой вопрос. Это одновременно и профессионально, и открывает настоящую обратную связь."
+  },
+  {
+    theme:"Масштабирование", diff:"Лёгкий", isNew:true,
+    title:"Фаундер хочет выйти на США, не закрыв Россию",
+    body:"Вика (B2B SaaS, $60K MRR в СНГ) приходит с запросом: <span class='hl'>«Хочу запустить продажи в США параллельно»</span>. Продукт на русском, поддержка на русском, ни одного англоязычного кастдева ещё не было.",
+    hint:"Что нужно, чтобы продавать в США — и чего из этого сейчас нет?",
+    correct:"Задать проверочный вопрос: «Что конкретно ты сделаешь первые 30 дней в США, что не можешь сделать здесь сейчас?» — и проверить готовность к geo-экспансии",
+    wrong:[
+      "Поддержать идею — США большой рынок и лучше начать раньше",
+      "Отговорить — нужно сначала дойти до $200K MRR в СНГ",
+      "Помочь составить go-to-market план для американского рынка",
+    ],
+    explanation:"Параллельный выход на новый рынок без product-market fit на текущем — классическое распыление фокуса. США требует другого продукта, другой поддержки, другого ICP. Трекер не запрещает и не разрешает — он проверяет, есть ли у фаундера конкретный план или это пока мечта."
+  },
+];
+
+function shuffle(a) {
+  const arr = [...a];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function buildPuzzles() {
+  return RAW.map(p => {
+    const opts = shuffle([
+      { t: p.correct, c: true },
+      ...p.wrong.map(t => ({ t, c: false }))
+    ]);
+    return { ...p, opts };
+  });
+}
+
+let PUZZLES = buildPuzzles();
+let filter = 'all', current = 0, answered = false;
+let streak = 0, rightCnt = 0, wrongCnt = 0;
+
+function getFiltered() {
+  if (filter === 'all') return PUZZLES;
+  if (filter === 'new') return PUZZLES.filter(p => p.isNew);
+  return PUZZLES.filter(p => p.theme === filter);
+}
+
+function setFilter(f, el) {
+  filter = f;
+  current = 0;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderPuzzle();
+}
+
+function renderPuzzle() {
+  const list = getFiltered();
+  const area = document.getElementById('puzzle-area');
+  if (!list.length) {
+    area.innerHTML = '<div class="empty">Нет кейсов в этой категории</div>';
+    return;
+  }
+  const idx = current % list.length;
+  const p = list[idx];
+  answered = false;
+  document.getElementById('progress').style.width = ((idx + 1) / list.length * 100) + '%';
+  const diffClass = p.diff === 'Лёгкий' ? 'tag-easy' : p.diff === 'Средний' ? 'tag-mid' : 'tag-hard';
+
+  area.innerHTML = `
+    <div class="card${p.isNew ? ' is-new' : ''}">
+      <div class="meta">
+        <span class="tag tag-theme">${p.theme}</span>
+        <span class="tag ${diffClass}">${p.diff}</span>
+        ${p.isNew ? '<span class="tag tag-new">✦ Новый</span>' : ''}
+        <span class="counter">${idx + 1} / ${list.length}</span>
+      </div>
+      <div class="case-title">${p.title}</div>
+      <div class="case-body">${p.body}</div>
+      <div class="section-label">Твой ход как трекера</div>
+      ${p.opts.map((o, i) => `
+        <button class="opt" onclick="pickOpt(this,${o.c})" id="o${i}">
+          <span class="opt-l">${'ABCD'[i]}.</span><span>${o.t}</span>
+        </button>`).join('')}
+      <div class="hint-box" id="hint-box">${p.hint}</div>
+      <div class="result" id="result"></div>
+    </div>
+    <div class="bottombar">
+      <button class="hint-btn" onclick="showHint()">💡 Подсказка</button>
+      <button class="next-btn" id="next-btn" onclick="nextPuzzle()">Следующий →</button>
+    </div>`;
+}
+
+function pickOpt(el, correct) {
+  if (answered) return;
+  answered = true;
+  const list = getFiltered();
+  const p = list[current % list.length];
+  document.querySelectorAll('.opt').forEach((b, i) => {
+    b.disabled = true;
+    if (p.opts[i].c) b.classList.add('correct');
+  });
+  if (correct) { el.classList.add('correct'); streak++; rightCnt++; }
+  else { el.classList.add('wrong'); streak = 0; wrongCnt++; }
+  const res = document.getElementById('result');
+  res.className = 'result show ' + (correct ? 'ok' : 'fail');
+  res.innerHTML = `<div class="result-title">${correct ? '✓ Верно' : '✗ Не совсем'}</div>${p.explanation}`;
+  document.getElementById('next-btn').classList.add('show');
+  document.getElementById('s-streak').textContent = streak;
+  document.getElementById('s-right').textContent = rightCnt;
+  document.getElementById('s-wrong').textContent = wrongCnt;
+}
+
+function showHint() {
+  document.getElementById('hint-box').classList.add('show');
+}
+
+function nextPuzzle() {
+  const list = getFiltered();
+  current++;
+  if (current >= list.length) current = 0;
+  renderPuzzle();
+}
+
+renderPuzzle();
+</script>
+</body>
+</html>
