@@ -6,6 +6,7 @@
 <title>Тренажёр трекера — бизнес-пазлы</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg:        #f7f6f3;
@@ -336,6 +337,19 @@
 </div>
 
 <script>
+// ─── Supabase ───────────────────────────────────────────────
+const SUPABASE_URL = 'https://cfokkqnxrzpiaesxztjo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_XIERUIW6OcUbBCvHE-2mmQ_97QVPW1G';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Анонимный ID пользователя (хранится в браузере)
+let USER_ID = localStorage.getItem('tracker_user_id');
+if (!USER_ID) {
+  USER_ID = 'u_' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('tracker_user_id', USER_ID);
+}
+
+// RAW — резервные кейсы (используются, если база недоступна или пуста)
 const RAW = [
   /* ─── Блок 1: базовые трекерские кейсы (6) ─── */
   {
@@ -507,8 +521,29 @@ function shuffle(a) {
   return arr;
 }
 
-function buildPuzzles() {
-  return RAW.map(p => {
+// Нормализует кейс к единому виду (из RAW или из Supabase)
+function normalizeCase(p) {
+  // Supabase-строка: topic/difficulty/description/answer/wrong_options/is_new
+  // RAW-строка:      theme/diff/body/correct/wrong/isNew
+  const theme = p.theme ?? p.topic;
+  const diff = p.diff ?? p.difficulty;
+  const body = p.body ?? p.description ?? '';
+  const correct = p.correct ?? p.answer;
+  const wrong = p.wrong ?? p.wrong_options ?? [];
+  const isNew = p.isNew ?? p.is_new ?? false;
+  return {
+    id: p.id ?? null,          // настоящий UUID из Supabase (для записи попыток)
+    theme, diff, isNew, body, correct,
+    title: p.title,
+    hint: p.hint ?? '',
+    explanation: p.explanation ?? '',
+    wrong: Array.isArray(wrong) ? wrong : [],
+  };
+}
+
+function buildPuzzles(source) {
+  return source.map(raw => {
+    const p = normalizeCase(raw);
     const opts = shuffle([
       { t: p.correct, c: true },
       ...p.wrong.map(t => ({ t, c: false }))
@@ -517,9 +552,31 @@ function buildPuzzles() {
   });
 }
 
-let PUZZLES = buildPuzzles();
+let PUZZLES = [];
 let filter = 'all', current = 0, answered = false;
 let streak = 0, rightCnt = 0, wrongCnt = 0;
+let hintUsed = false;
+
+// Загрузка кейсов: сначала из Supabase, при ошибке/пустоте — из RAW
+async function loadPuzzles() {
+  try {
+    const { data, error } = await db
+      .from('cases')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    if (data && data.length) {
+      PUZZLES = buildPuzzles(data);
+      renderPuzzle();
+      return;
+    }
+  } catch (e) {
+    console.warn('Не удалось загрузить кейсы из Supabase, использую резервные:', e.message);
+  }
+  PUZZLES = buildPuzzles(RAW);
+  renderPuzzle();
+}
 
 function getFiltered() {
   if (filter === 'all') return PUZZLES;
@@ -545,6 +602,7 @@ function renderPuzzle() {
   const idx = current % list.length;
   const p = list[idx];
   answered = false;
+  hintUsed = false;
   document.getElementById('progress').style.width = ((idx + 1) / list.length * 100) + '%';
   const diffClass = p.diff === 'Лёгкий' ? 'tag-easy' : p.diff === 'Средний' ? 'tag-mid' : 'tag-hard';
 
@@ -590,10 +648,33 @@ function pickOpt(el, correct) {
   document.getElementById('s-streak').textContent = streak;
   document.getElementById('s-right').textContent = rightCnt;
   document.getElementById('s-wrong').textContent = wrongCnt;
+
+  // Запись попытки в Supabase
+  recordAttempt(p, correct);
+}
+
+async function recordAttempt(p, correct) {
+  // result: 'correct' | 'hint' (верно, но с подсказкой) | 'wrong'
+  const result = correct ? (hintUsed ? 'hint' : 'correct') : 'wrong';
+  const row = { user_id: USER_ID, result };
+  if (p.id) row.case_id = p.id;  // настоящий UUID есть только у кейсов из Supabase
+  try {
+    await db.from('attempts').insert(row);
+    // обновим/создадим запись пользователя (рейтинг = сумма верных, +1 балл за верный)
+    if (correct) {
+      await db.from('users').upsert(
+        { id: USER_ID, name: USER_ID, rating: rightCnt, streak },
+        { onConflict: 'id' }
+      );
+    }
+  } catch (e) {
+    console.warn('Не удалось записать попытку:', e.message);
+  }
 }
 
 function showHint() {
   document.getElementById('hint-box').classList.add('show');
+  hintUsed = true;
 }
 
 function nextPuzzle() {
@@ -603,7 +684,7 @@ function nextPuzzle() {
   renderPuzzle();
 }
 
-renderPuzzle();
+loadPuzzles();
 </script>
 </body>
 </html>

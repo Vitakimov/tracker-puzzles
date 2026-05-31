@@ -398,9 +398,11 @@ select.filter:focus { border-color: var(--border2); color: var(--text); }
           </select>
         </div>
       </div>
-      <div class="modal-field"><label>ОПИСАНИЕ</label><textarea id="f-description" rows="3" placeholder="Опишите ситуацию кейса..."></textarea></div>
-      <div class="modal-field"><label>ВОПРОС К ТРЕКЕРУ</label><textarea id="f-question" rows="2" placeholder="Какой ваш первый шаг как трекера?"></textarea></div>
-      <div class="modal-field"><label>ЭТАЛОННЫЙ ОТВЕТ</label><textarea id="f-answer" rows="4" placeholder="Правильный подход в данной ситуации..."></textarea></div>
+      <div class="modal-field"><label>ОПИСАНИЕ КЕЙСА (можно HTML: &lt;span class='hl'&gt;)</label><textarea id="f-description" rows="4" placeholder="Опишите ситуацию кейса..."></textarea></div>
+      <div class="modal-field"><label>ПОДСКАЗКА</label><textarea id="f-hint" rows="2" placeholder="Наводящий вопрос..."></textarea></div>
+      <div class="modal-field"><label>✓ ПРАВИЛЬНЫЙ ОТВЕТ</label><textarea id="f-answer" rows="3" placeholder="Правильный ход трекера..."></textarea></div>
+      <div class="modal-field"><label>✗ НЕПРАВИЛЬНЫЕ ВАРИАНТЫ (по одному на строку)</label><textarea id="f-wrong" rows="4" placeholder="Вариант 1&#10;Вариант 2&#10;Вариант 3"></textarea></div>
+      <div class="modal-field"><label>РАЗБОР (показывается после ответа)</label><textarea id="f-explanation" rows="3" placeholder="Почему правильный ответ верен..."></textarea></div>
       <div class="modal-row">
         <div class="modal-field"><label>СТАТУС</label>
           <select id="f-status">
@@ -409,8 +411,14 @@ select.filter:focus { border-color: var(--border2); color: var(--text); }
             <option value="archived">Архив</option>
           </select>
         </div>
-        <div class="modal-field"><label>БАЛЛЫ</label><input id="f-points" type="number" value="15" min="5" max="30"></div>
+        <div class="modal-field"><label>ПОМЕТКА «НОВЫЙ»</label>
+          <select id="f-isnew">
+            <option value="false">Нет</option>
+            <option value="true">✦ Новый</option>
+          </select>
+        </div>
       </div>
+      <div class="modal-field"><label>БАЛЛЫ</label><input id="f-points" type="number" value="15" min="5" max="30"></div>
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('case-modal')">Отмена</button>
@@ -644,9 +652,12 @@ function openCaseModal(id) {
   document.getElementById('f-topic').value = '';
   document.getElementById('f-difficulty').value = '';
   document.getElementById('f-description').value = '';
-  document.getElementById('f-question').value = '';
+  document.getElementById('f-hint').value = '';
   document.getElementById('f-answer').value = '';
+  document.getElementById('f-wrong').value = '';
+  document.getElementById('f-explanation').value = '';
   document.getElementById('f-status').value = 'active';
+  document.getElementById('f-isnew').value = 'false';
   document.getElementById('f-points').value = '15';
 
   if (id === 'new') {
@@ -660,9 +671,12 @@ function openCaseModal(id) {
     document.getElementById('f-topic').value = c.topic || '';
     document.getElementById('f-difficulty').value = c.difficulty || '';
     document.getElementById('f-description').value = c.description || '';
-    document.getElementById('f-question').value = c.question || '';
+    document.getElementById('f-hint').value = c.hint || '';
     document.getElementById('f-answer').value = c.answer || '';
+    document.getElementById('f-wrong').value = Array.isArray(c.wrong_options) ? c.wrong_options.join('\n') : '';
+    document.getElementById('f-explanation').value = c.explanation || '';
     document.getElementById('f-status').value = c.status || 'active';
+    document.getElementById('f-isnew').value = c.is_new ? 'true' : 'false';
     document.getElementById('f-points').value = c.points || 15;
   }
   document.getElementById('case-modal').classList.add('open');
@@ -672,14 +686,20 @@ async function saveCase() {
   const title = document.getElementById('f-title').value.trim();
   if (!title) { showToast('Введите название кейса', 'error'); return; }
 
+  const wrongRaw = document.getElementById('f-wrong').value.trim();
+  const wrongArr = wrongRaw ? wrongRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+
   const payload = {
     title,
     topic: document.getElementById('f-topic').value || null,
     difficulty: document.getElementById('f-difficulty').value || null,
     description: document.getElementById('f-description').value || null,
-    question: document.getElementById('f-question').value || null,
+    hint: document.getElementById('f-hint').value || null,
     answer: document.getElementById('f-answer').value || null,
+    wrong_options: wrongArr,
+    explanation: document.getElementById('f-explanation').value || null,
     status: document.getElementById('f-status').value,
+    is_new: document.getElementById('f-isnew').value === 'true',
     points: parseInt(document.getElementById('f-points').value) || 15,
   };
 
