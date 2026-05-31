@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1212 · Админка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #0e0e0e;
+  --bg2: #161616;
+  --bg3: #1f1f1f;
+  --border: #2a2a2a;
+  --border2: #333;
+  --text: #e8e6e0;
+  --text2: #888;
+  --text3: #555;
+  --accent: #c8f060;
+  --accent2: #a8d040;
+  --red: #f06060;
+  --amber: #f0b060;
+  --blue: #60a8f0;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font: 'IBM Plex Sans', sans-serif;
+  --radius: 4px;
+  --radius2: 8px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+/* AUTH */
+#auth-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  background-image: radial-gradient(ellipse at 20% 50%, rgba(200,240,96,.04) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 20%, rgba(96,168,240,.03) 0%, transparent 50%);
+}
+.auth-box {
+  width: 360px; border: 1px solid var(--border2); border-radius: var(--radius2);
+  background: var(--bg2); padding: 2.5rem;
+}
+.auth-logo { font-family: var(--font-mono); font-size: 11px; color: var(--text3); letter-spacing: .15em; margin-bottom: 2rem; }
+.auth-logo strong { color: var(--accent); font-weight: 500; }
+.auth-title { font-size: 20px; font-weight: 300; margin-bottom: .375rem; }
+.auth-sub { font-size: 13px; color: var(--text2); margin-bottom: 2rem; }
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-size: 11px; font-family: var(--font-mono); color: var(--text2); letter-spacing: .08em; margin-bottom: 6px; }
+.field input {
+  width: 100%; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 14px; outline: none;
+  transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent); }
+.btn-login {
+  width: 100%; padding: 11px; background: var(--accent); color: #0e0e0e; border: none;
+  border-radius: var(--radius); font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+  cursor: pointer; letter-spacing: .05em; transition: background .2s; margin-top: .5rem;
+}
+.btn-login:hover { background: var(--accent2); }
+.auth-error { font-size: 12px; color: var(--red); margin-top: .75rem; min-height: 18px; }
+
+/* LAYOUT */
+#app { display: none; flex-direction: row; min-height: 100vh; }
+
+/* SIDEBAR */
+.sidebar {
+  width: 220px; flex-shrink: 0; border-right: 1px solid var(--border);
+  background: var(--bg2); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0;
+}
+.sidebar-header { padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
+.sidebar-brand { font-family: var(--font-mono); font-size: 11px; color: var(--text3); letter-spacing: .15em; }
+.sidebar-brand strong { color: var(--accent); }
+.sidebar-user { font-size: 12px; color: var(--text2); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav { flex: 1; padding: 1rem 0; }
+.nav-section { font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing: .12em; padding: 10px 1.25rem 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 1.25rem;
+  font-size: 13px; color: var(--text2); cursor: pointer; transition: all .15s;
+  border-left: 2px solid transparent;
+}
+.nav-item:hover { color: var(--text); background: var(--bg3); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(200,240,96,.05); }
+.nav-icon { font-size: 16px; width: 18px; text-align: center; }
+.sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
+.btn-logout {
+  width: 100%; padding: 8px; background: transparent; border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text2); font-family: var(--font); font-size: 12px;
+  cursor: pointer; transition: all .15s;
+}
+.btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+/* MAIN */
+.main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.topbar {
+  padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg2); position: sticky; top: 0; z-index: 10;
+}
+.topbar-title { font-size: 15px; font-weight: 500; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.content { padding: 1.5rem; }
+
+/* PANELS */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* STAT CARDS */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1.5rem; }
+.stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); padding: 1.125rem 1.25rem; }
+.stat-label { font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing: .1em; margin-bottom: 8px; }
+.stat-value { font-size: 28px; font-weight: 300; color: var(--text); }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+  border: 1px solid var(--border2); border-radius: var(--radius); background: transparent;
+  color: var(--text2); font-family: var(--font); font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.btn:hover { border-color: var(--border2); color: var(--text); background: var(--bg3); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #0e0e0e; font-weight: 500; }
+.btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn.danger { border-color: var(--red); color: var(--red); }
+.btn.danger:hover { background: rgba(240,96,96,.1); }
+
+/* TABLE */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); overflow: hidden; margin-bottom: 1.25rem; }
+.card-header { padding: .875rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; color: var(--text2); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 8px 12px; font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: .1em; color: var(--text3); border-bottom: 1px solid var(--border);
+  white-space: nowrap; font-weight: 400;
+}
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--bg3); }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-family: var(--font-mono); }
+.badge-green { background: rgba(200,240,96,.12); color: var(--accent); border: 1px solid rgba(200,240,96,.2); }
+.badge-amber { background: rgba(240,176,96,.12); color: var(--amber); border: 1px solid rgba(240,176,96,.2); }
+.badge-red { background: rgba(240,96,96,.12); color: var(--red); border: 1px solid rgba(240,96,96,.2); }
+.badge-blue { background: rgba(96,168,240,.12); color: var(--blue); border: 1px solid rgba(96,168,240,.2); }
+.badge-gray { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+
+/* TOOLBAR */
+.toolbar { display: flex; gap: 8px; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.search-wrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius); padding: 7px 12px; }
+.search-wrap input { border: none; background: transparent; color: var(--text); font-family: var(--font); font-size: 13px; outline: none; flex: 1; }
+.search-wrap input::placeholder { color: var(--text3); }
+select.filter {
+  padding: 7px 10px; border: 1px solid var(--border2); border-radius: var(--radius);
+  background: var(--bg3); color: var(--text2); font-family: var(--font); font-size: 13px; outline: none;
+}
+select.filter:focus { border-color: var(--border2); color: var(--text); }
+
+/* ICON BUTTONS */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all .15s;
+}
+.icon-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+.icon-btn.del:hover { border-color: var(--red); color: var(--red); }
+
+/* MODAL */
+.modal-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none;
+  align-items: center; justify-content: center; z-index: 100;
+  backdrop-filter: blur(2px);
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius2);
+  width: 540px; max-width: 96vw; max-height: 90vh; overflow-y: auto;
+}
+.modal-head {
+  padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg2);
+}
+.modal-head h3 { font-size: 14px; font-weight: 500; }
+.modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 14px; }
+.modal-field label { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing: .1em; margin-bottom: 6px; }
+.modal-field input, .modal-field textarea, .modal-field select {
+  width: 100%; padding: 9px 12px; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 13px; outline: none; transition: border-color .2s;
+}
+.modal-field input:focus, .modal-field textarea:focus, .modal-field select:focus { border-color: var(--accent); }
+.modal-field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+.modal-field select option { background: var(--bg3); }
+.modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-foot {
+  padding: 1rem 1.5rem; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px; position: sticky; bottom: 0; background: var(--bg2);
+}
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--radius2); padding: .875rem 1.25rem; font-size: 13px; color: var(--text);
+  transform: translateY(80px); opacity: 0; transition: all .3s; z-index: 200; max-width: 300px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-left: 3px solid var(--accent); }
+.toast.error { border-left: 3px solid var(--red); }
+
+/* LOADING */
+.loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--text3); font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; gap: 10px; }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty { padding: 2.5rem; text-align: center; color: var(--text3); font-size: 13px; }
+
+/* USERS TABLE extras */
+.avatar { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+.progress-bar { height: 4px; background: var(--border); border-radius: 2px; width: 80px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 2px; background: var(--accent); }
+
+/* ACTIVITY */
+.activity-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo"><strong>1212</strong> / ADMIN</div>
+    <div class="auth-title">Вход в систему</div>
+    <div class="auth-sub">Только для администраторов тренажёра</div>
+    <div class="field">
+      <label>EMAIL</label>
+      <input type="email" id="auth-email" placeholder="admin@example.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>ПАРОЛЬ</label>
+      <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="login-btn" onclick="login()">ВОЙТИ</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand"><strong>1212</strong> · ADMIN</div>
+      <div class="sidebar-user" id="sidebar-user">—</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">ОБЗОР</div>
+      <div class="nav-item active" onclick="switchTab('stats', this)">
+        <span class="nav-icon">◈</span> Статистика
+      </div>
+      <div class="nav-section">УПРАВЛЕНИЕ</div>
+      <div class="nav-item" onclick="switchTab('cases', this)">
+        <span class="nav-icon">◧</span> Кейсы
+      </div>
+      <div class="nav-item" onclick="switchTab('users', this)">
+        <span class="nav-icon">◉</span> Пользователи
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">Выйти</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- STATS PANEL -->
+    <div id="panel-stats" class="panel active">
+      <div class="topbar">
+        <div class="topbar-title">Статистика прохождения</div>
+        <div class="topbar-actions">
+          <button class="btn" onclick="loadStats()">↻ Обновить</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats-grid" id="stats-cards">
+          <div class="stat-card"><div class="stat-label">КЕЙСОВ В БАЗЕ</div><div class="stat-value" id="s-cases">—</div></div>
+          <div class="stat-card"><div class="stat-label">ПОПЫТОК ВСЕГО</div><div class="stat-value" id="s-attempts">—</div></div>
+          <div class="stat-card"><div class="stat-label">ТОЧНОСТЬ</div><div class="stat-value" id="s-accuracy">—</div></div>
+          <div class="stat-card"><div class="stat-label">ТРЕКЕРОВ</div><div class="stat-value" id="s-users">—</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">ПОСЛЕДНИЕ ПРОХОЖДЕНИЯ</span></div>
+          <div id="activity-wrap"><div class="loading"><div class="spinner"></div>Загрузка...</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">СТАТИСТИКА ПО КЕЙСАМ</span></div>
+          <div id="case-stats-wrap"><div class="loading"><div class="spinner"></div>Загрузка...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CASES PANEL -->
+    <div id="panel-cases" class="panel">
+      <div class="topbar">
+        <div class="topbar-title">Кейсы</div>
+        <div class="topbar-actions">
+          <button class="btn primary" onclick="openCaseModal('new')">+ Новый кейс</button>
+        </div>
+      </div>
+      <div class="card" style="margin:1.5rem">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <span style="color:var(--text3);font-size:14px">⌕</span>
+            <input id="case-search" placeholder="Поиск..." oninput="filterCases()">
+          </div>
+          <select class="filter" id="topic-filter" onchange="filterCases()">
+            <option value="">Все темы</option>
+            <option>Диагностика</option><option>Сессия</option><option>Стратегия</option>
+            <option>Масштабирование</option><option>Конфликт</option><option>Инвестор</option><option>Фокус</option><option>Портфель</option>
+          </select>
+          <select class="filter" id="diff-filter" onchange="filterCases()">
+            <option value="">Сложность</option>
+            <option>Лёгкий</option><option>Средний</option><option>Сложный</option>
+          </select>
+          <select class="filter" id="status-filter" onchange="filterCases()">
+            <option value="">Статус</option>
+            <option>active</option><option>draft</option><option>archived</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>НАЗВАНИЕ</th><th>ТЕМА</th><th>СЛОЖНОСТЬ</th>
+                <th>СТАТУС</th><th>БАЛЛЫ</th><th>СОЗДАН</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="cases-tbody"></tbody>
+          </table>
+        </div>
+        <div id="cases-loading" class="loading"><div class="spinner"></div>Загрузка...</div>
+      </div>
+    </div>
+
+    <!-- USERS PANEL -->
+    <div id="panel-users" class="panel">
+      <div class="topbar">
+        <div class="topbar-title">Пользователи — трекеры</div>
+        <div class="topbar-actions">
+          <button class="btn" onclick="loadUsers()">↻ Обновить</button>
+        </div>
+      </div>
+      <div class="card" style="margin:1.5rem">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ТРЕКЕР</th><th>РЕЙТИНГ</th><th>ПОПЫТОК</th>
+                <th>ВЕРНЫХ</th><th>ТОЧНОСТЬ</th><th>СТРИК</th><th>ЗАРЕГИСТРИРОВАН</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+        <div id="users-loading" class="loading"><div class="spinner"></div>Загрузка...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CASE MODAL -->
+<div class="modal-bg" id="case-modal" onclick="closeModalBg(event,'case-modal')">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modal-title">Новый кейс</h3>
+      <button class="icon-btn" onclick="closeModal('case-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="f-id">
+      <div class="modal-field"><label>НАЗВАНИЕ *</label><input id="f-title" placeholder="Конфликт фаундеров на развилке"></div>
+      <div class="modal-row">
+        <div class="modal-field"><label>ТЕМА</label>
+          <select id="f-topic">
+            <option value="">— выбрать —</option>
+            <option>Диагностика</option><option>Сессия</option><option>Стратегия</option>
+            <option>Масштабирование</option><option>Конфликт</option><option>Инвестор</option><option>Фокус</option><option>Портфель</option>
+          </select>
+        </div>
+        <div class="modal-field"><label>СЛОЖНОСТЬ</label>
+          <select id="f-difficulty">
+            <option value="">— выбрать —</option>
+            <option>Лёгкий</option><option>Средний</option><option>Сложный</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field"><label>ОПИСАНИЕ</label><textarea id="f-description" rows="3" placeholder="Опишите ситуацию кейса..."></textarea></div>
+      <div class="modal-field"><label>ВОПРОС К ТРЕКЕРУ</label><textarea id="f-question" rows="2" placeholder="Какой ваш первый шаг как трекера?"></textarea></div>
+      <div class="modal-field"><label>ЭТАЛОННЫЙ ОТВЕТ</label><textarea id="f-answer" rows="4" placeholder="Правильный подход в данной ситуации..."></textarea></div>
+      <div class="modal-row">
+        <div class="modal-field"><label>СТАТУС</label>
+          <select id="f-status">
+            <option value="active">Активный</option>
+            <option value="draft">Черновик</option>
+            <option value="archived">Архив</option>
+          </select>
+        </div>
+        <div class="modal-field"><label>БАЛЛЫ</label><input id="f-points" type="number" value="15" min="5" max="30"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('case-modal')">Отмена</button>
+      <button class="btn primary" onclick="saveCase()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://cfokkqnxrzpiaesxztjo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_XIERUIW6OcUbBCvHE-2mmQ_97QVPW1G';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let allCases = [];
+
+// ─── AUTH ───────────────────────────────────────────────────────────
+async function login() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('login-btn');
+
+  errEl.textContent = '';
+  btn.textContent = 'ВХОД...';
+  btn.disabled = true;
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errEl.textContent = error.message === 'Invalid login credentials'
+      ? 'Неверный email или пароль'
+      : error.message;
+    btn.textContent = 'ВОЙТИ';
+    btn.disabled = false;
+    return;
+  }
+
+  currentUser = data.user;
+  showApp();
+}
+
+async function logout() {
+  await db.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  currentUser = null;
+}
+
+async function checkSession() {
+  const { data } = await db.auth.getSession();
+  if (data.session) {
+    currentUser = data.session.user;
+    showApp();
+  }
+}
+
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('sidebar-user').textContent = currentUser?.email || '';
+  loadStats();
+}
+
+// Enter key on login
+document.getElementById('auth-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') login();
+});
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────
+function switchTab(tab, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  el.classList.add('active');
+  if (tab === 'cases') loadCases();
+  if (tab === 'users') loadUsers();
+  if (tab === 'stats') loadStats();
+}
+
+// ─── STATS ───────────────────────────────────────────────────────────
+async function loadStats() {
+  // Counts
+  const [{ count: casesCount }, { count: attemptsCount }, { count: usersCount }] = await Promise.all([
+    db.from('cases').select('*', { count: 'exact', head: true }),
+    db.from('attempts').select('*', { count: 'exact', head: true }),
+    db.from('users').select('*', { count: 'exact', head: true }),
+  ]);
+
+  document.getElementById('s-cases').textContent = casesCount ?? 0;
+  document.getElementById('s-attempts').textContent = attemptsCount ?? 0;
+  document.getElementById('s-users').textContent = usersCount ?? 0;
+
+  // Accuracy
+  const { data: attempts } = await db.from('attempts').select('result');
+  if (attempts && attempts.length) {
+    const correct = attempts.filter(a => a.result === 'correct').length;
+    const pct = Math.round(correct / attempts.length * 100);
+    document.getElementById('s-accuracy').textContent = pct + '%';
+  } else {
+    document.getElementById('s-accuracy').textContent = '—';
+  }
+
+  // Activity
+  const { data: activity } = await db
+    .from('attempts')
+    .select('*, cases(title, topic)')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const actWrap = document.getElementById('activity-wrap');
+  if (!activity || !activity.length) {
+    actWrap.innerHTML = '<div class="empty">Прохождений пока нет</div>';
+  } else {
+    actWrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>ПОЛЬЗОВАТЕЛЬ</th><th>КЕЙС</th><th>ТЕМА</th><th>РЕЗУЛЬТАТ</th><th>ВРЕМЯ</th></tr></thead>
+      <tbody>${activity.map(a => {
+        const badge = a.result === 'correct' ? 'badge-green' : a.result === 'hint' ? 'badge-amber' : 'badge-red';
+        const label = a.result === 'correct' ? 'верно' : a.result === 'hint' ? 'с подсказкой' : 'мимо';
+        return `<tr>
+          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text2)">${a.user_id || '—'}</td>
+          <td>${a.cases?.title || '—'}</td>
+          <td>${a.cases?.topic ? `<span class="badge badge-blue">${a.cases.topic}</span>` : '—'}</td>
+          <td><span class="badge ${badge}">${label}</span></td>
+          <td style="color:var(--text3);font-size:12px">${formatDate(a.created_at)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  }
+
+  // Stats per case
+  const { data: caseStats } = await db
+    .from('attempts')
+    .select('case_id, result, cases(title, topic)');
+
+  const caseStatsWrap = document.getElementById('case-stats-wrap');
+  if (!caseStats || !caseStats.length) {
+    caseStatsWrap.innerHTML = '<div class="empty">Статистика появится после первых прохождений</div>';
+  } else {
+    const byCase = {};
+    caseStats.forEach(a => {
+      if (!a.case_id) return;
+      if (!byCase[a.case_id]) byCase[a.case_id] = { title: a.cases?.title || a.case_id, topic: a.cases?.topic, total: 0, correct: 0 };
+      byCase[a.case_id].total++;
+      if (a.result === 'correct') byCase[a.case_id].correct++;
+    });
+    const rows = Object.values(byCase).sort((a,b) => b.total - a.total);
+    caseStatsWrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>КЕЙС</th><th>ТЕМА</th><th>ПОПЫТОК</th><th>ВЕРНЫХ</th><th>ТОЧНОСТЬ</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const pct = Math.round(r.correct / r.total * 100);
+        const fillColor = pct > 70 ? 'var(--accent)' : pct > 50 ? 'var(--amber)' : 'var(--red)';
+        return `<tr>
+          <td style="font-weight:500">${r.title}</td>
+          <td>${r.topic ? `<span class="badge badge-blue">${r.topic}</span>` : '—'}</td>
+          <td>${r.total}</td>
+          <td>${r.correct}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+              <span style="font-family:var(--font-mono);font-size:12px;color:${fillColor}">${pct}%</span>
+            </div>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  }
+}
+
+// ─── CASES ───────────────────────────────────────────────────────────
+async function loadCases() {
+  document.getElementById('cases-tbody').innerHTML = '';
+  document.getElementById('cases-loading').style.display = 'flex';
+
+  const { data, error } = await db.from('cases').select('*').order('created_at', { ascending: false });
+
+  document.getElementById('cases-loading').style.display = 'none';
+  allCases = data || [];
+  renderCases(allCases);
+}
+
+function renderCases(cases) {
+  const tbody = document.getElementById('cases-tbody');
+  if (!cases.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty">Кейсов пока нет. Создайте первый!</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = cases.map((c, i) => {
+    const diffBadge = c.difficulty === 'Лёгкий' ? 'badge-green' : c.difficulty === 'Средний' ? 'badge-amber' : c.difficulty === 'Сложный' ? 'badge-red' : 'badge-gray';
+    const statusBadge = c.status === 'active' ? 'badge-green' : c.status === 'draft' ? 'badge-amber' : 'badge-gray';
+    const statusLabel = c.status === 'active' ? 'активный' : c.status === 'draft' ? 'черновик' : 'архив';
+    return `<tr>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text3)">${i+1}</td>
+      <td style="font-weight:500;max-width:200px">${c.title}</td>
+      <td>${c.topic ? `<span class="badge badge-blue">${c.topic}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
+      <td>${c.difficulty ? `<span class="badge ${diffBadge}">${c.difficulty}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
+      <td><span class="badge ${statusBadge}">${statusLabel}</span></td>
+      <td style="font-family:var(--font-mono);font-size:12px">${c.points ?? '—'}</td>
+      <td style="color:var(--text3);font-size:12px">${formatDate(c.created_at)}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="icon-btn" onclick="openCaseModal('${c.id}')" title="Редактировать">✎</button>
+          <button class="icon-btn del" onclick="deleteCase('${c.id}','${c.title.replace(/'/g,"\\'")}')" title="Удалить">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterCases() {
+  const q = document.getElementById('case-search').value.toLowerCase();
+  const t = document.getElementById('topic-filter').value;
+  const d = document.getElementById('diff-filter').value;
+  const s = document.getElementById('status-filter').value;
+  renderCases(allCases.filter(c =>
+    (!q || c.title.toLowerCase().includes(q)) &&
+    (!t || c.topic === t) &&
+    (!d || c.difficulty === d) &&
+    (!s || c.status === s)
+  ));
+}
+
+function openCaseModal(id) {
+  document.getElementById('f-id').value = '';
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-topic').value = '';
+  document.getElementById('f-difficulty').value = '';
+  document.getElementById('f-description').value = '';
+  document.getElementById('f-question').value = '';
+  document.getElementById('f-answer').value = '';
+  document.getElementById('f-status').value = 'active';
+  document.getElementById('f-points').value = '15';
+
+  if (id === 'new') {
+    document.getElementById('modal-title').textContent = 'Новый кейс';
+  } else {
+    const c = allCases.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('modal-title').textContent = 'Редактировать кейс';
+    document.getElementById('f-id').value = c.id;
+    document.getElementById('f-title').value = c.title || '';
+    document.getElementById('f-topic').value = c.topic || '';
+    document.getElementById('f-difficulty').value = c.difficulty || '';
+    document.getElementById('f-description').value = c.description || '';
+    document.getElementById('f-question').value = c.question || '';
+    document.getElementById('f-answer').value = c.answer || '';
+    document.getElementById('f-status').value = c.status || 'active';
+    document.getElementById('f-points').value = c.points || 15;
+  }
+  document.getElementById('case-modal').classList.add('open');
+}
+
+async function saveCase() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { showToast('Введите название кейса', 'error'); return; }
+
+  const payload = {
+    title,
+    topic: document.getElementById('f-topic').value || null,
+    difficulty: document.getElementById('f-difficulty').value || null,
+    description: document.getElementById('f-description').value || null,
+    question: document.getElementById('f-question').value || null,
+    answer: document.getElementById('f-answer').value || null,
+    status: document.getElementById('f-status').value,
+    points: parseInt(document.getElementById('f-points').value) || 15,
+  };
+
+  const id = document.getElementById('f-id').value;
+  let error;
+
+  if (id) {
+    ({ error } = await db.from('cases').update(payload).eq('id', id));
+  } else {
+    ({ error } = await db.from('cases').insert(payload));
+  }
+
+  if (error) { showToast('Ошибка: ' + error.message, 'error'); return; }
+
+  closeModal('case-modal');
+  showToast(id ? 'Кейс обновлён' : 'Кейс создан', 'success');
+  loadCases();
+}
+
+async function deleteCase(id, title) {
+  if (!confirm(`Удалить кейс «${title}»?`)) return;
+  const { error } = await db.from('cases').delete().eq('id', id);
+  if (error) { showToast('Ошибка удаления: ' + error.message, 'error'); return; }
+  showToast('Кейс удалён', 'success');
+  loadCases();
+}
+
+// ─── USERS ───────────────────────────────────────────────────────────
+async function loadUsers() {
+  document.getElementById('users-tbody').innerHTML = '';
+  document.getElementById('users-loading').style.display = 'flex';
+
+  const [{ data: users }, { data: attempts }] = await Promise.all([
+    db.from('users').select('*').order('rating', { ascending: false }),
+    db.from('attempts').select('user_id, result'),
+  ]);
+
+  document.getElementById('users-loading').style.display = 'none';
+
+  // Aggregate per user
+  const statsMap = {};
+  (attempts || []).forEach(a => {
+    if (!a.user_id) return;
+    if (!statsMap[a.user_id]) statsMap[a.user_id] = { total: 0, correct: 0 };
+    statsMap[a.user_id].total++;
+    if (a.result === 'correct') statsMap[a.user_id].correct++;
+  });
+
+  const tbody = document.getElementById('users-tbody');
+  if (!users || !users.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty">Пользователей пока нет</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = users.map((u, i) => {
+    const initials = (u.name || u.id || '?').slice(0, 2).toUpperCase();
+    const stats = statsMap[u.id] || { total: 0, correct: 0 };
+    const pct = stats.total ? Math.round(stats.correct / stats.total * 100) : 0;
+    const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '';
+    const accColor = pct > 70 ? 'var(--accent)' : pct > 50 ? 'var(--amber)' : 'var(--red)';
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="avatar">${initials}</div>
+          <div>
+            <div style="font-weight:500">${medal}${u.name || '—'}</div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">${u.id}</div>
+          </div>
+        </div>
+      </td>
+      <td style="font-family:var(--font-mono);font-weight:500;color:var(--accent)">${u.rating ?? 0}</td>
+      <td>${stats.total}</td>
+      <td>${stats.correct}</td>
+      <td>
+        ${stats.total ? `<div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${accColor}"></div></div>
+          <span style="font-family:var(--font-mono);font-size:12px;color:${accColor}">${pct}%</span>
+        </div>` : '<span style="color:var(--text3)">—</span>'}
+      </td>
+      <td>${u.streak > 0 ? `<span style="color:var(--amber)">🔥 ${u.streak}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="color:var(--text3);font-size:12px">${formatDate(u.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────
+function formatDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'только что';
+  if (diff < 3600) return Math.floor(diff/60) + ' мин назад';
+  if (diff < 86400) return Math.floor(diff/3600) + ' ч назад';
+  return d.toLocaleDateString('ru', { day:'numeric', month:'short' });
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModalBg(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+let toastTimer;
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+checkSession();
+</script>
+</body>
+</html>
