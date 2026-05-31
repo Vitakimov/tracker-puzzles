@@ -63,6 +63,52 @@
   }
   .brand span { color: var(--accent); }
 
+  /* ── Auth screen ── */
+  #t-auth {
+    display: none;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  #t-auth.show { display: flex; }
+  .auth-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+  }
+  .auth-brand { font-size: 15px; font-weight: 600; margin-bottom: 1.5rem; }
+  .auth-brand span { color: var(--accent); }
+  .auth-h { font-size: 19px; font-weight: 600; margin-bottom: .375rem; }
+  .auth-p { font-size: 13px; color: var(--text-2); margin-bottom: 1.5rem; }
+  .auth-f { margin-bottom: .875rem; }
+  .auth-f label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 5px; }
+  .auth-f input {
+    width: 100%; padding: 10px 12px; font-family: inherit; font-size: 14px;
+    border: 1px solid var(--border-md); border-radius: var(--radius-sm);
+    background: var(--bg); color: var(--text-1); outline: none; transition: border-color .15s;
+  }
+  .auth-f input:focus { border-color: var(--accent); }
+  .auth-btn {
+    width: 100%; padding: 11px; margin-top: .5rem; font-family: inherit; font-size: 14px; font-weight: 500;
+    border: none; border-radius: var(--radius-sm); background: var(--accent); color: #fff;
+    cursor: pointer; transition: opacity .15s;
+  }
+  .auth-btn:hover { opacity: .9; }
+  .auth-btn:disabled { opacity: .5; cursor: default; }
+  .auth-toggle { margin-top: 1rem; font-size: 13px; color: var(--text-2); text-align: center; }
+  .auth-toggle a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .auth-msg { font-size: 12px; margin-top: .75rem; min-height: 16px; }
+  .auth-msg.err { color: var(--danger); }
+  .auth-msg.ok { color: var(--accent); }
+  .user-badge { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+  .user-badge b { color: var(--text-1); font-weight: 500; }
+  .logout-link { font-size: 12px; color: var(--text-3); cursor: pointer; text-decoration: underline; }
+  .logout-link:hover { color: var(--danger); }
+
   /* ── Filter chips ── */
   .chips {
     display: flex;
@@ -308,9 +354,40 @@
 </style>
 </head>
 <body>
-<div id="app">
+
+<!-- Экран входа / регистрации -->
+<div id="t-auth">
+  <div class="auth-card">
+    <div class="auth-brand">1212 · <span>Тренажёр трекера</span></div>
+    <div class="auth-h" id="auth-h">Вход</div>
+    <div class="auth-p" id="auth-p">Войдите, чтобы сохранять прогресс на любом устройстве</div>
+    <div class="auth-f">
+      <label>Email</label>
+      <input type="email" id="t-email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="auth-f">
+      <label>Пароль</label>
+      <input type="password" id="t-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="auth-f" id="name-field" style="display:none">
+      <label>Имя</label>
+      <input type="text" id="t-name" placeholder="Как вас зовут" autocomplete="name">
+    </div>
+    <button class="auth-btn" id="t-auth-btn" onclick="doAuth()">Войти</button>
+    <div class="auth-msg" id="t-auth-msg"></div>
+    <div class="auth-toggle" id="t-auth-toggle">
+      Нет аккаунта? <a onclick="toggleAuthMode()">Зарегистрироваться</a>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
   <div class="header">
     <div class="brand">1212 · <span>Тренажёр трекера</span></div>
+    <div class="user-badge" id="user-badge">
+      <span><b id="ub-name">—</b></span>
+      <span class="logout-link" onclick="trainerLogout()">выйти</span>
+    </div>
   </div>
 
   <div class="chips" id="chips">
@@ -342,12 +419,10 @@ const SUPABASE_URL = 'https://cfokkqnxrzpiaesxztjo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_XIERUIW6OcUbBCvHE-2mmQ_97QVPW1G';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Анонимный ID пользователя (хранится в браузере)
-let USER_ID = localStorage.getItem('tracker_user_id');
-if (!USER_ID) {
-  USER_ID = 'u_' + Math.random().toString(36).slice(2, 10);
-  localStorage.setItem('tracker_user_id', USER_ID);
-}
+// Текущий пользователь (заполняется после входа)
+let USER_ID = null;
+let USER_NAME = null;
+let authMode = 'login'; // 'login' | 'signup'
 
 // RAW — резервные кейсы (используются, если база недоступна или пуста)
 const RAW = [
@@ -663,7 +738,7 @@ async function recordAttempt(p, correct) {
     // обновим/создадим запись пользователя (рейтинг = сумма верных, +1 балл за верный)
     if (correct) {
       await db.from('users').upsert(
-        { id: USER_ID, name: USER_ID, rating: rightCnt, streak },
+        { id: USER_ID, name: USER_NAME || USER_ID, rating: rightCnt, streak },
         { onConflict: 'id' }
       );
     }
@@ -684,7 +759,105 @@ function nextPuzzle() {
   renderPuzzle();
 }
 
-loadPuzzles();
+// ─── Авторизация пользователя ───────────────────────────────
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  const isSignup = authMode === 'signup';
+  document.getElementById('auth-h').textContent = isSignup ? 'Регистрация' : 'Вход';
+  document.getElementById('auth-p').textContent = isSignup
+    ? 'Создайте аккаунт, чтобы сохранять прогресс'
+    : 'Войдите, чтобы сохранять прогресс на любом устройстве';
+  document.getElementById('t-auth-btn').textContent = isSignup ? 'Зарегистрироваться' : 'Войти';
+  document.getElementById('name-field').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('t-auth-toggle').innerHTML = isSignup
+    ? 'Уже есть аккаунт? <a onclick="toggleAuthMode()">Войти</a>'
+    : 'Нет аккаунта? <a onclick="toggleAuthMode()">Зарегистрироваться</a>';
+  document.getElementById('t-auth-msg').textContent = '';
+  document.getElementById('t-password').setAttribute('autocomplete', isSignup ? 'new-password' : 'current-password');
+}
+
+async function doAuth() {
+  const email = document.getElementById('t-email').value.trim();
+  const password = document.getElementById('t-password').value;
+  const name = document.getElementById('t-name').value.trim();
+  const msg = document.getElementById('t-auth-msg');
+  const btn = document.getElementById('t-auth-btn');
+
+  if (!email || !password) { msg.className = 'auth-msg err'; msg.textContent = 'Заполните email и пароль'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '...';
+  msg.textContent = '';
+
+  if (authMode === 'signup') {
+    const { data, error } = await db.auth.signUp({
+      email, password,
+      options: { data: { full_name: name || email.split('@')[0] } }
+    });
+    btn.disabled = false;
+    btn.textContent = 'Зарегистрироваться';
+    if (error) { msg.className = 'auth-msg err'; msg.textContent = translateAuthError(error.message); return; }
+    if (data.user && !data.session) {
+      // включено подтверждение email
+      msg.className = 'auth-msg ok';
+      msg.textContent = 'Проверьте почту — отправили письмо для подтверждения.';
+      return;
+    }
+    onAuthSuccess(data.user);
+  } else {
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    btn.disabled = false;
+    btn.textContent = 'Войти';
+    if (error) { msg.className = 'auth-msg err'; msg.textContent = translateAuthError(error.message); return; }
+    onAuthSuccess(data.user);
+  }
+}
+
+function translateAuthError(m) {
+  if (m === 'Invalid login credentials') return 'Неверный email или пароль';
+  if (m.includes('already registered')) return 'Такой email уже зарегистрирован';
+  if (m.includes('at least 6')) return 'Пароль должен быть не короче 6 символов';
+  if (m.includes('valid email')) return 'Введите корректный email';
+  return m;
+}
+
+function onAuthSuccess(user) {
+  USER_ID = user.id;
+  USER_NAME = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Трекер';
+  document.getElementById('ub-name').textContent = USER_NAME;
+  document.getElementById('t-auth').classList.remove('show');
+  document.getElementById('app').style.display = 'block';
+  // создаём/обновляем запись пользователя в таблице users
+  db.from('users').upsert({ id: USER_ID, name: USER_NAME }, { onConflict: 'id' });
+  loadPuzzles();
+}
+
+async function trainerLogout() {
+  await db.auth.signOut();
+  USER_ID = null; USER_NAME = null;
+  streak = 0; rightCnt = 0; wrongCnt = 0;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('t-auth').classList.add('show');
+  document.getElementById('t-password').value = '';
+}
+
+// Enter отправляет форму
+['t-email','t-password','t-name'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') doAuth(); });
+});
+
+// При загрузке: проверяем активную сессию
+async function initTrainer() {
+  const { data } = await db.auth.getSession();
+  if (data.session) {
+    onAuthSuccess(data.session.user);
+  } else {
+    document.getElementById('t-auth').classList.add('show');
+  }
+}
+
+initTrainer();
 </script>
 </body>
 </html>
